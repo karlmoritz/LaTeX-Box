@@ -35,7 +35,9 @@ endif
 
 " Set PID {{{
 function! s:LatexmkSetPID(basename, pid)
-	let g:latexmk_running_pids[a:basename] = a:pid
+	let g:latexmk_running_pids[a:basename] = system('pgrep -nf "^perl.*latexmk"')[:-2]
+	echomsg "Doing the callback"
+	echomsg system('pgrep -nf "^perl.*latexmk"')
 endfunction
 " }}}
 
@@ -265,7 +267,7 @@ function! LatexBox_Latexmk(force)
 			let cmd = '!start /b ' . asyncbat . ' & del ' . asyncbat
 		else
 			" Define callback to set the pid
-			let callsetpid = shellescape(setpidfunc).'"(\"'.basepath.'\",$$)"'
+			let callsetpid = shellescape(setpidfunc).'"(\"'.basepath.'\",0)"'
 			let vimsetpid = g:vim_program . ' --servername ' . v:servername
 			                        \ . ' --remote-expr ' . callsetpid
 
@@ -285,12 +287,11 @@ function! LatexBox_Latexmk(force)
 			" through g:LatexBox_latexmk_options, for instance with
 			" g:Latex..._options = "-pdflatex='pdflatex -synctex=1 \%O \%S'"
 			if g:LatexBox_latexmk_preview_continuously
-				let cmd = vimsetpid . ' ; '
-						\ . 'export SUCCESSCMD=' . shellescape(svimcmd) . ' '
+				let cmd = 'export SUCCESSCMD=' . shellescape(svimcmd) . ' '
 						\ . '       FAILURECMD=' . shellescape(fvimcmd) . ' ; '
 						\ . escape(cmd, '%')
 			else
-				let cmd = vimsetpid . ' ; ' . escape(cmd, '%') . ' ; ' . vimcmd
+				let cmd = escape(cmd, '%') . ' ; ' . vimcmd
 			endif
 			let cmd = '! (' . cmd . ') >/dev/null &'
 		endif
@@ -302,6 +303,9 @@ function! LatexBox_Latexmk(force)
 			echo 'Compiling to ' . g:LatexBox_output_type . ' ...'
 		endif
 		silent execute cmd
+		echomsg cmd
+		silent execute vimsetpid
+		echomsg vimsetpid
 	else
 		if g:LatexBox_latexmk_preview_continuously
 			if has('win32')
